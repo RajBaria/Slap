@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slap Counter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f3f4f6;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars from animations */
+        }
+
+        #image-container {
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.1s;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            overflow: hidden; 
+            max-width: 90vw;
+            max-height: 50vh; /* Reduced slightly to ensure counter fits */
+        }
+
+        #target-image {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            user-select: none; 
+            -webkit-user-drag: none;
+            /* Added pointer events to ensure click registers on image */
+            pointer-events: auto; 
+        }
+
+        .slapped {
+            animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-2px, 0, 0) rotate(-1deg); }
+            20%, 80% { transform: translate3d(4px, 0, 0) rotate(2deg); }
+            30%, 50%, 70% { transform: translate3d(-6px, 0, 0) rotate(-3deg); }
+            40%, 60% { transform: translate3d(6px, 0, 0) rotate(3deg); }
+        }
+
+        .slap-effect {
+            position: absolute;
+            pointer-events: none;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ef4444; 
+            text-shadow: 2px 2px 0px white, -2px -2px 0px white, 2px -2px 0px white, -2px 2px 0px white;
+            animation: floatUpAndFade 0.6s ease-out forwards;
+            z-index: 10;
+        }
+
+        @keyframes floatUpAndFade {
+            0% { opacity: 1; transform: translateY(0) scale(0.5) translate(-50%, -50%); }
+            50% { transform: translateY(-20px) scale(1.2) translate(-50%, -50%); }
+            100% { opacity: 0; transform: translateY(-40px) scale(1) translate(-50%, -50%); }
+        }
+        
+        #counter-container {
+            margin-top: 2rem;
+            text-align: center;
+            /* Ensure it stays above other elements */
+            z-index: 20; 
+        }
+
+    </style>
+</head>
+<body>
+    <div class="text-center mb-6 px-4">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">Tap to Slap!</h1>
+        <p class="text-gray-600">Click or tap directly on the image.</p>
+    </div>
+
+    <!-- Container for the image -->
+    <div id="image-container">
+        <!-- The target image -->
+        <img id="target-image" src="https://raw.githubusercontent.com/RajBaria/Slap/main/images.webp" alt="Target" onerror="this.onerror=null; this.src='https://placehold.co/600x400/eeeeee/999999?text=Image+Not+Found';">
+    </div>
+
+    <!-- Counter Display placed distinctly below the image -->
+    <div id="counter-container" class="bg-white px-8 py-4 rounded-3xl shadow-xl border-2 border-gray-100 flex flex-col items-center min-w-[200px]">
+        <div class="text-lg text-gray-500 font-bold uppercase tracking-widest mb-1">Total Lafa</div>
+        <div id="slap-count" class="text-6xl font-black text-blue-600 tabular-nums">0</div>
+    </div>
+    
+    <!-- Reset Button -->
+    <button id="reset-btn" class="mt-6 px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-full font-semibold transition-colors shadow-sm text-sm">
+        Reset Count
+    </button>
+
+    <script>
+        // Use a simpler approach to ensure events bind correctly
+        window.onload = function() {
+            let count = 0;
+            const targetImage = document.getElementById('target-image');
+            const imageContainer = document.getElementById('image-container');
+            const countDisplay = document.getElementById('slap-count');
+            const resetBtn = document.getElementById('reset-btn');
+
+            // Load saved count
+            const savedCount = localStorage.getItem('slapCount');
+            if (savedCount !== null) {
+                count = parseInt(savedCount, 10);
+                updateDisplay();
+            }
+
+            function slapAction(e) {
+                // Prevent default behavior if needed (like image drag)
+                e.preventDefault();
+
+                // Increment and update
+                count++;
+                updateDisplay();
+                localStorage.setItem('slapCount', count.toString());
+
+                // Trigger animation
+                imageContainer.classList.remove('slapped');
+                void imageContainer.offsetWidth; // force reflow
+                imageContainer.classList.add('slapped');
+
+                // Visual Effect
+                showTextEffect(e);
+                
+                // Sound Effect
+                playSlapSound();
+            }
+
+            function updateDisplay() {
+                countDisplay.textContent = count;
+                // Tiny pop animation for the number
+                countDisplay.style.transform = 'scale(1.1)';
+                setTimeout(() => {
+                    countDisplay.style.transform = 'scale(1)';
+                }, 100);
+            }
+
+            function showTextEffect(e) {
+                const effect = document.createElement('div');
+                effect.classList.add('slap-effect');
+                
+                const texts = ['BAM!', 'POW!', 'SLAP!', 'THWACK!'];
+                effect.textContent = texts[Math.floor(Math.random() * texts.length)];
+
+                // Calculate position relative to container
+                const rect = imageContainer.getBoundingClientRect();
+                let clientX = e.clientX;
+                let clientY = e.clientY;
+
+                // Handle touch event coords
+                if (e.type === 'touchstart' && e.touches.length > 0) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                }
+
+                // If somehow coordinates are missing (e.g. triggered via keyboard), center it
+                if (clientX === undefined) {
+                     clientX = rect.left + rect.width / 2;
+                     clientY = rect.top + rect.height / 2;
+                }
+
+                effect.style.left = `${clientX - rect.left}px`;
+                effect.style.top = `${clientY - rect.top}px`;
+
+                imageContainer.appendChild(effect);
+
+                setTimeout(() => {
+                    if (effect.parentNode) {
+                        effect.parentNode.removeChild(effect);
+                    }
+                }, 600);
+            }
+
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            function playSlapSound() {
+                if(audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                
+                try {
+                    const bufferSize = audioCtx.sampleRate * 0.1; 
+                    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        data[i] = Math.random() * 2 - 1;
+                    }
+
+                    const noise = audioCtx.createBufferSource();
+                    noise.buffer = buffer;
+
+                    const noiseFilter = audioCtx.createBiquadFilter();
+                    noiseFilter.type = 'lowpass';
+                    noiseFilter.frequency.value = 4000;
+
+                    const noiseEnvelope = audioCtx.createGain();
+                    noiseEnvelope.gain.setValueAtTime(1, audioCtx.currentTime);
+                    noiseEnvelope.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+
+                    noise.connect(noiseFilter);
+                    noiseFilter.connect(noiseEnvelope);
+                    noiseEnvelope.connect(audioCtx.destination);
+                    
+                    noise.start();
+                } catch(err) {
+                    console.log("Audio not supported or allowed yet");
+                }
+            }
+
+            // Use both click and touchstart on the image itself for maximum reliability
+            targetImage.addEventListener('click', slapAction);
+            targetImage.addEventListener('touchstart', slapAction, {passive: false});
+
+            resetBtn.addEventListener('click', () => {
+                count = 0;
+                updateDisplay();
+                localStorage.setItem('slapCount', '0');
+            });
+
+            // Cleanup animation
+            imageContainer.addEventListener('animationend', () => {
+                imageContainer.classList.remove('slapped');
+            });
+        };
+    </script>
+</body>
+</html>
